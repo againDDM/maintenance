@@ -1,0 +1,21 @@
+---
+
+- name: Deploy
+  hosts:
+    - localhost
+  tags:
+    - deploy
+  tasks:
+    - name: Remove a container
+      community.docker.docker_container:
+        name: example-web-app
+        state: absent
+    - name: Restart a container
+      community.docker.docker_container:
+        name: example-web-app
+        image: "againddm/example-web-app:{{ app_version }}"
+        state: started
+        restart: true
+        ports:
+        - "127.0.0.1:8090:8090/tcp"
+  become: true
