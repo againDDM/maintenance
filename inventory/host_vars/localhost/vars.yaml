@@ -1,0 +1,5 @@
+---
+
+ansible_connection: "local"
+staytus_api_token: "{{ vault_staytus_api_token }}"
+staytus_api_secret: "{{ vault_staytus_api_secret }}"

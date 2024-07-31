@@ -1,5 +1,44 @@
 ---
 
+- name: Set maintenance
+  hosts:
+    - localhost
+  tags:
+    - staytus
+    - deploy
+  vars:
+    staytus_service_name: "example-web-app"
+    staytus_base_url: "http://localhost:8787"
+  tasks:
+    - name: Get current status of the service
+      uri:
+        url: "{{ staytus_base_url }}/api/v1/services/info"
+        method: POST
+        headers:
+          X-Auth-Token: "{{ staytus_api_token }}"
+          X-Auth-Secret: "{{ staytus_api_secret }}"
+          Content-Type: "application/json"
+        body: "{{ {'service': staytus_service_name} | to_json }}"
+        body_format: json
+        return_content: yes
+      register: service_response
+    - name: Extract current status of the service
+      set_fact:
+        current_status: "{{ service_response.json.data.status.permalink }}"
+      when: service_response.json.data is defined
+    - name: Set service status to maintenance
+      uri:
+        url: "{{ staytus_base_url }}/api/v1/services/set_status"
+        method: POST
+        headers:
+          X-Auth-Token: "{{ staytus_api_token }}"
+          X-Auth-Secret: "{{ staytus_api_secret }}"
+          Content-Type: "application/json"
+        body: "{{ {'service': staytus_service_name, 'status': 'maintenance'} | to_json }}"
+        body_format: json
+  become: false
+  run_once: true
+
 - name: Deploy
   hosts:
     - localhost
@@ -19,3 +58,30 @@
         ports:
         - "127.0.0.1:8090:8090/tcp"
   become: true
+
+- name: Set original status
+  hosts:
+    - localhost
+  tags:
+    - staytus
+    - deploy
+  vars:
+    staytus_service_name: "example-web-app"
+    staytus_base_url: "http://localhost:8787"
+  tasks:
+    - name: Pause to check staytus
+      ansible.builtin.pause:
+        seconds: 60
+    - name: Set original status
+      uri:
+        url: "{{ staytus_base_url }}/api/v1/services/set_status"
+        method: POST
+        headers:
+          X-Auth-Token: "{{ staytus_api_token }}"
+          X-Auth-Secret: "{{ staytus_api_secret }}"
+          Content-Type: "application/json"
+        body: "{{ {'service': staytus_service_name, 'status': current_status} | to_json }}"
+        body_format: json
+      when: current_status is defined
+  become: false
+  run_once: true
